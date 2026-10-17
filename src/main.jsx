@@ -1,9 +1,11 @@
-﻿import { StrictMode } from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createLDReactProvider } from '@launchdarkly/react-sdk';
 import App from './App.jsx';
 import './index.css';
 
+// Configure the browser SDK with the client-side ID from .env.local.
+// Never put a private server-side SDK key or trigger URL in browser code.
 const clientSideId = import.meta.env.VITE_LD_CLIENT_SIDE_ID;
 
 if (!clientSideId) {

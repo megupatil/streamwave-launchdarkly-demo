@@ -1,4 +1,4 @@
-﻿# StreamWave — LaunchDarkly Feature Flag Demo
+# StreamWave — LaunchDarkly Feature Flag Demo
 
 A React application demonstrating targeted feature releases, real-time flag updates, and emergency rollback using the LaunchDarkly React SDK.
 
@@ -88,8 +88,8 @@ Configure the following rules in this order:
 
 | Rule | Attribute | Condition | Serve |
 |---|---|---|---|
+| Individual target: Internal QA | User key `internal-qa-01` | Exact user match | `true` |
 | Premium early access | `user_tier` | is `Premium` | `true` |
-| Internal QA access | `beta_tester` | is `true` | `true` |
 | Default rule | — | all other contexts | `false` |
 
 Use a string for `user_tier` and a Boolean for `beta_tester`.
