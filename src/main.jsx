@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+﻿import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createLDReactProvider } from '@launchdarkly/react-sdk';
 import App from './App.jsx';
@@ -16,7 +16,7 @@ const initialContext = {
   kind: 'user',
   key: 'internal-qa-01',
   name: 'Internal QA',
-  user_tier: 'Premium',
+  user_tier: 'Standard',
   geography: 'India',
   device_type: 'Desktop',
   beta_tester: true,
