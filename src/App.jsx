@@ -6,6 +6,19 @@ import {
 } from '@launchdarkly/react-sdk';
 import './App.css';
 
+// -----------------------------------------------------------------------------
+// Demo personas
+//
+// Reviewer setup: Configure the `new-player-experience` Boolean flag in
+// LaunchDarkly using the targeting rules documented in README.md.
+//
+// Internal QA receives the new experience through individual targeting.
+// Premium customers receive it through the `user_tier = Premium` rule.
+// Standard customers receive the default false variation.
+//
+// The context keys and attribute values below must match the configuration
+// created in your LaunchDarkly environment.
+// -----------------------------------------------------------------------------
 const personas = {
   qa: {
     label: 'Internal QA',
@@ -36,6 +49,8 @@ const personas = {
   },
 };
 
+// Sample catalogue data used to make the fictional StreamWave interface
+// feel like a customer-facing streaming application.
 const titles = [
   {
     name: 'Beyond the Horizon',
@@ -57,6 +72,9 @@ const titles = [
   },
 ];
 
+// Renders the player experience selected by the LaunchDarkly Boolean flag.
+// A true variation displays the new experience; false displays the legacy one.
+// This component only demonstrates UI variation; it does not play actual video.
 function PlayerExperience({ isNewPlayer }) {
   return (
     <section
@@ -91,12 +109,24 @@ function PlayerExperience({ isNewPlayer }) {
 }
 
 export default function App() {
+  // Access the initialized LaunchDarkly client so the demo can identify
+  // different contexts when the reviewer changes the selected persona.
   const ldClient = useLDClient();
+
+  // Evaluate the flag for the current LaunchDarkly context.
+  // The second argument, false, is the fallback value used when a flag
+  // value is unavailable. It does not replace LaunchDarkly targeting rules.
   const isNewPlayer = useBoolVariation('new-player-experience', false);
+
+  // Track the persona selected in the demo controls.
   const [persona, setPersona] = useState('qa');
+
+  // Expose context-switch progress and errors to make the demo easier to operate.
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState('');
 
+  // Identify the selected demo persona in LaunchDarkly.
+  // This causes the SDK to evaluate flags for the selected context.
   async function changePersona(event) {
     const nextPersona = event.target.value;
     setPersona(nextPersona);
@@ -104,11 +134,15 @@ export default function App() {
     setSwitchError('');
 
     try {
+      // The selected persona's key and attributes are sent to LaunchDarkly.
+      // Keep these values aligned with the flag's targeting configuration.
       await ldClient.identify({
         kind: 'user',
         ...personas[nextPersona],
       });
     } catch (error) {
+      // Log technical details for debugging while showing a readable message
+      // in the interface rather than exposing raw errors to the demo user.
       console.error('Unable to change LaunchDarkly context:', error);
       setSwitchError('Unable to update the test user. Check the browser console.');
     } finally {
@@ -161,6 +195,7 @@ export default function App() {
           </div>
         </div>
 
+        {/* The rendered player changes according to the evaluated flag value. */}
         <PlayerExperience isNewPlayer={isNewPlayer} />
       </section>
 
@@ -173,6 +208,7 @@ export default function App() {
           <a className="catalog-link" href="#discover">Explore all →</a>
         </div>
 
+        {/* Render the sample catalogue from data to avoid repeating card markup. */}
         <div className="title-grid">
           {titles.map((title) => (
             <article className={`title-card ${title.color}`} key={title.name}>
@@ -187,6 +223,8 @@ export default function App() {
         </div>
       </section>
 
+      {/* Interview-only controls for demonstrating context-based flag targeting.
+          These controls are not an authentication or authorization mechanism. */}
       <section className="demo-controls" aria-label="Interview demo controls">
         <div>
           <p className="eyebrow">INTERVIEW DEMO · TESTING ONLY</p>
@@ -206,6 +244,8 @@ export default function App() {
           </select>
         </label>
 
+        {/* Display the selected persona's attributes to help reviewers verify
+            which context is being evaluated during the demonstration. */}
         <div className="persona-summary">
           <span><strong>User tier:</strong> {personas[persona].user_tier}</span>
           <span><strong>Beta tester:</strong> {String(personas[persona].beta_tester)}</span>
