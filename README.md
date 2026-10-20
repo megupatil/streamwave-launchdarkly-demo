@@ -1,6 +1,8 @@
 # StreamWave — LaunchDarkly Feature Flag Demo
 
-A React application demonstrating progressive feature releases, user targeting, real-time flag updates, and emergency rollback with the LaunchDarkly React SDK.
+A React + Vite demonstration of progressive feature releases, user targeting, real-time flag updates, and emergency rollback using the LaunchDarkly React SDK.
+
+> **Project status:** Interview/demo application. This repository demonstrates frontend feature management; it is not a production video-streaming service.
 
 ## Table of Contents
 
@@ -8,27 +10,37 @@ A React application demonstrating progressive feature releases, user targeting, 
 - [Business Scenario](#business-scenario)
 - [Capabilities](#capabilities)
 - [Technology Stack](#technology-stack)
-- [Architecture](#architecture)
+- [Architecture and Request Flow](#architecture-and-request-flow)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [LaunchDarkly Configuration](#launchdarkly-configuration)
 - [Demo Personas](#demo-personas)
-- [Demonstration Scenarios](#demonstration-scenarios)
+- [Demonstration Runbook](#demonstration-runbook)
 - [Emergency Rollback](#emergency-rollback)
-- [Validation and Quality Checks](#validation-and-quality-checks)
+- [Validation and Quality Gates](#validation-and-quality-gates)
 - [Troubleshooting](#troubleshooting)
 - [Security and Repository Hygiene](#security-and-repository-hygiene)
 - [Project Structure](#project-structure)
-- [Limitations](#limitations)
+- [Known Limitations](#known-limitations)
 - [Customer Demonstration Narrative](#customer-demonstration-narrative)
 
 ## Overview
 
-StreamWave is a frontend demonstration of how LaunchDarkly feature flags can help a team release a new experience gradually, target selected users, and disable a release without rebuilding or redeploying the frontend.
+StreamWave demonstrates how LaunchDarkly feature flags can help a team control exposure to a new application experience without rebuilding or redeploying the frontend.
 
-The demo uses a Boolean feature flag named `new-player-experience`. Internal QA and Premium customers can receive the new player experience, while Standard customers receive the legacy experience by default.
+The Boolean flag `new-player-experience` determines whether the demo shows the redesigned player or the legacy experience. The intended targeting model grants access to an internal QA context and Premium customers while keeping other contexts on the legacy experience by default.
 
-> **Scope:** This repository is an interview/demo application. It is not a production video-streaming service and does not implement video delivery, customer authentication, billing, or backend authorization.
+### Goals
+
+- Show how a feature can be released to selected contexts.
+- Demonstrate individual and attribute-based targeting.
+- Demonstrate streaming updates while the browser remains open.
+- Show an operational rollback path using a LaunchDarkly Generic trigger.
+- Make setup and evaluation reproducible for another reviewer.
+
+### Scope
+
+This is a frontend interview exercise. It does not implement video delivery, user authentication, billing, backend authorization, production monitoring, or a full incident-management system.
 
 ## Business Scenario
 
@@ -36,57 +48,56 @@ StreamWave wants to introduce a redesigned playback experience without exposing 
 
 The team wants to:
 
-1. Validate the experience with an individually targeted internal QA user.
+1. Validate the new experience with an individually targeted internal QA context.
 2. Expand access to Premium customers using a context attribute.
-3. Keep users who do not match targeting on the legacy experience.
-4. Respond to a release issue by turning the flag off without deploying new frontend code.
-
-This project demonstrates that workflow using LaunchDarkly.
+3. Keep contexts that do not match targeting on the legacy experience.
+4. Disable the release quickly if a problem occurs, without redeploying the frontend.
 
 ## Capabilities
 
-- Boolean feature flag integration using the LaunchDarkly React SDK.
+- Boolean flag integration using the LaunchDarkly React SDK.
 - Individual targeting by context key.
-- Rule-based targeting using context attributes.
-- Default behavior for contexts that do not match targeting rules.
-- Interactive demo personas for QA, Premium, and Standard users.
-- Streaming updates so flag changes can appear without a browser refresh.
-- Emergency rollback using a LaunchDarkly Generic trigger.
-- Local lint and production-build checks.
-- Repeatable setup from a fresh Git clone or ZIP download.
+- Rule-based targeting using a string context attribute.
+- A default-off experience for contexts that do not match targeting.
+- Demo personas for Internal QA, Premium Customer, and Standard Customer.
+- Streaming updates so flag changes can be reflected without a manual refresh.
+- A PowerShell helper for invoking a configured LaunchDarkly Generic trigger.
+- Lint and production-build scripts for basic validation.
+- Repeatable setup from a fresh Git clone or ZIP archive.
 
 ## Technology Stack
 
-- **React** — builds the user interface.
-- **Vite** — scaffolds the initial project and provides the development server and production build tooling.
-- **JavaScript** — application implementation.
-- **`@launchdarkly/react-sdk`** — connects the React application to LaunchDarkly.
-- **LaunchDarkly** — flag evaluation, targeting, and trigger configuration.
-- **PowerShell** — runs the emergency rollback helper on Windows.
+- **React** — component-based user interface.
+- **Vite** — project scaffolding, local development server, and production build tooling.
+- **JavaScript** — application logic.
+- **`@launchdarkly/react-sdk`** — LaunchDarkly integration for React.
+- **LaunchDarkly** — flag evaluation, targeting, and Generic trigger configuration.
+- **PowerShell** — emergency rollback helper on Windows.
 - **Git and GitHub** — source control and repository hosting.
 
-## Architecture
+## Architecture and Request Flow
 
-1. `src/main.jsx` initializes the React application and LaunchDarkly provider.
-2. The provider connects to the selected LaunchDarkly environment using the client-side ID configured in `.env.local`.
-3. `src/App.jsx` evaluates the `new-player-experience` Boolean flag for the selected demo context.
-4. LaunchDarkly targeting determines whether the new or legacy player experience is shown.
-5. Streaming allows flag updates to reach the open application without a page reload.
-6. The PowerShell rollback helper can invoke a configured LaunchDarkly Generic trigger to turn off the intended flag.
+1. `src/main.jsx` creates the React application and configures the LaunchDarkly provider.
+2. The provider reads `VITE_LD_CLIENT_SIDE_ID` from the local Vite environment.
+3. The app evaluates `new-player-experience` for the currently selected demo context.
+4. LaunchDarkly evaluates the flag using the context key, attributes, targeting rules, and flag state.
+5. The UI renders the new player when the flag evaluates to `true`; otherwise it renders the legacy experience.
+6. Streaming lets the SDK receive flag changes while the app remains open.
+7. `scripts/emergency-rollback.ps1` can invoke a preconfigured Generic trigger intended to turn the flag off.
 
-The browser application uses a **client-side ID**, not a server-side SDK key. The local environment file is intentionally not committed.
+**Configuration boundary:** The browser application must use the LaunchDarkly client-side ID for the intended environment. Do not use a server-side SDK key, access token, or private trigger URL in browser code.
 
 ## Prerequisites
 
-Before starting, ensure you have:
+Before you begin, have:
 
 - Node.js and npm installed.
-- Git installed if you plan to clone the repository.
-- Access to a LaunchDarkly project and environment where you can configure the flag and targeting rules.
-- The client-side ID for that LaunchDarkly environment.
-- Windows PowerShell if you intend to run `scripts/emergency-rollback.ps1`.
+- Git installed if you will clone the repository.
+- Access to a LaunchDarkly project and environment where you can configure flags and targeting.
+- The client-side ID for that environment.
+- Windows PowerShell if you plan to use the rollback helper.
 
-Check your Node.js and npm installations:
+Check the tools:
 
 ```powershell
 node --version
@@ -94,15 +105,15 @@ npm.cmd --version
 git --version
 ```
 
-The commands in this guide use `npm.cmd` for Windows PowerShell compatibility. If your environment runs `npm` normally, you can use `npm` instead.
+Commands use `npm.cmd` to avoid the PowerShell script execution-policy issue that can affect `npm.ps1`. If `npm` works normally in your shell, you may use it instead.
 
 ## Quick Start
 
-Follow these steps in order to run the application from a fresh clone or ZIP download.
+Complete these steps in order. Run commands from the project root—the directory containing `package.json`.
 
-### 1. Get the source code
+### 1. Obtain the source
 
-**Option A — Clone the repository (recommended)**
+**Option A — Clone with Git (recommended)**
 
 ```powershell
 git clone https://github.com/megupatil/streamwave-launchdarkly-demo.git
@@ -113,22 +124,18 @@ Set-Location streamwave-launchdarkly-demo
 
 1. Open the [StreamWave GitHub repository](https://github.com/megupatil/streamwave-launchdarkly-demo).
 2. Select **Code → Download ZIP**.
-3. Extract the ZIP.
-4. Open PowerShell in the extracted project directory.
+3. Extract the archive.
+4. Open PowerShell in the extracted project folder.
 
 ### 2. Confirm the project root
-
-Run:
 
 ```powershell
 Get-ChildItem
 ```
 
-You should see `package.json`, `.env.example`, `src/`, and `scripts/`. If these files are not present, you may be in the parent directory rather than the project root. Change to the directory that contains `package.json` before continuing.
+You should see `package.json`, `package-lock.json`, `.env.example`, `src/`, and `scripts/`. If you do not see `package.json`, you are not in the project root. Change into the folder that contains it before running npm commands.
 
 ### 3. Install dependencies
-
-From the project root, run:
 
 ```powershell
 npm.cmd ci
@@ -136,167 +143,162 @@ npm.cmd ci
 
 `npm.cmd ci` installs the dependency versions recorded in `package-lock.json`. If the repository does not include a lockfile, use `npm.cmd install` instead.
 
-### 4. Configure the LaunchDarkly client-side ID
+### 4. Create the local environment file
 
-Create your local environment file from the checked-in example:
+Copy the example file:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-Open `.env.local` and replace the placeholder with the client-side ID for the LaunchDarkly project and environment you will use.
+Open `.env.local` and replace the placeholder with the client-side ID from the LaunchDarkly project and environment you will use.
 
-The expected variable name in this project is:
+The expected variable name is:
 
 ```dotenv
 VITE_LD_CLIENT_SIDE_ID=your-launchdarkly-client-side-id
 ```
 
-Do not leave the placeholder value in place. Do not substitute a server-side SDK key or access token.
+**Reviewer configuration notes:**
 
-**Important:** Vite loads environment variables when the development server starts. If you change `.env.local` while the server is running, stop and restart the server.
+- Replace the placeholder; do not leave it as-is.
+- Use the client-side ID, not a server-side SDK key.
+- Use the same LaunchDarkly environment for this ID and the flag configuration.
+- Do not commit `.env.local`.
+- Vite reads environment variables when the dev server starts. Restart the server after changing this file.
 
-### 5. Start the application
+### 5. Configure LaunchDarkly
+
+Before starting the demo, configure the Boolean flag and targeting rules in [LaunchDarkly Configuration](#launchdarkly-configuration).
+
+### 6. Start the development server
 
 ```powershell
 npm.cmd run dev
 ```
 
-Open the local URL printed by Vite, typically:
+Open the URL printed by Vite, typically `http://localhost:5173/`. Keep the terminal running while you use the app.
 
-`http://localhost:5173/`
+### 7. Run the validation commands
 
-Keep the terminal running while you use the application.
-
-### 6. Configure LaunchDarkly
-
-Before testing targeting, configure the flag as described in [LaunchDarkly Configuration](#launchdarkly-configuration) below. Ensure that the app's client-side ID and the flag configuration refer to the same LaunchDarkly project and environment.
-
-### 7. Verify the application
-
-Use the persona selector to test Internal QA, Premium Customer, and Standard Customer. Then change the flag state in LaunchDarkly while leaving the browser open and confirm the interface responds without a refresh.
-
-### 8. Run the quality checks
+In a second terminal, from the project root:
 
 ```powershell
 npm.cmd run lint
 npm.cmd run build
 ```
 
-These checks validate the source and generate production assets in `dist/`. They do not deploy the application.
+These commands check the source and produce production assets in `dist/`. They do not deploy the application.
 
 ## LaunchDarkly Configuration
 
-### 1. Environment Variable
+### 1. Client-side environment variable
 
-The application reads:
+The app expects:
 
 `VITE_LD_CLIENT_SIDE_ID`
 
-The local value belongs in `.env.local`, which should be excluded from Git. The repository's `.env.example` should contain only a placeholder, never a real environment-specific credential.
+Set this variable in `.env.local`, created from `.env.example`. The example file must contain a placeholder only.
 
-A client-side ID is intended for browser SDK configuration. It is different from a server-side SDK key. Never expose server-side credentials or private trigger URLs in frontend code or public documentation.
+A client-side ID is designed for browser SDK initialization. It is not a server-side SDK key. Never expose private server-side credentials or a trigger URL through frontend code.
 
-### 2. Feature Flag
+### 2. Create the feature flag
 
-Create or configure the following Boolean flag in the LaunchDarkly environment used by the application.
+Create or configure a **Boolean** flag in the same LaunchDarkly project and environment as the client-side ID.
 
-| Setting | Value |
+| Setting | Required value |
 |---|---|
 | Flag name | New Player Experience |
 | Flag key | `new-player-experience` |
-| Type | Boolean |
+| Flag type | Boolean |
 | On variation | `true` |
 | Off variation | `false` |
 | Application fallback | `false` |
 
-Confirm that the flag key matches the key used by the application exactly.
+**Reviewer note:** The flag key must match exactly, including spelling and hyphens. The fallback is what the app uses if it cannot obtain an evaluated flag value; it does not replace correct SDK configuration.
 
-### 3. Targeting Rules
+### 3. Configure targeting
 
-Configure the following behavior:
+Configure the following evaluation behavior:
 
-| Order | Targeting mechanism | Condition | Serve |
+| Priority | Targeting mechanism | Condition | Serve |
 |---|---|---|---|
-| 1 | Individual targeting — Internal QA | Context key is `internal-qa-01` | `true` |
-| 2 | Premium early access | `user_tier` equals `Premium` | `true` |
+| 1 | Individual target — Internal QA | Context key is `internal-qa-01` | `true` |
+| 2 | Premium early-access rule | `user_tier` equals `Premium` | `true` |
 | 3 | Default rule | All other contexts | `false` |
 
-Use the exact context key and attribute values. `user_tier` is a string attribute.
+Use the exact key and attribute values. `user_tier` is a string attribute.
 
-The individual QA target should enable the flag for `internal-qa-01`, even though that persona has `user_tier=Standard`. The Premium rule enables the flag for contexts whose `user_tier` is `Premium`. Other Standard contexts should receive `false` by default.
+Expected behavior:
 
-When the flag is turned off globally, its off variation should be returned regardless of the individual target and targeting rules.
+- `internal-qa-01` receives `true` through individual targeting, even though its tier is Standard.
+- A context with `user_tier=Premium` receives `true` through the Premium rule.
+- A Standard context that is not individually targeted receives `false`.
+- Turning the flag off globally returns the off variation, overriding targeting.
 
 ## Demo Personas
 
-Use the persona selector in the application to switch between these demonstration contexts.
+Use the in-app persona selector to switch contexts.
 
-| Persona | Context key | Attributes | Expected experience while flag is on |
+| Persona | Context key | Attributes | Expected result when flag is on |
 |---|---|---|---|
 | Internal QA | `internal-qa-01` | `user_tier=Standard`, `beta_tester=true` | New player |
 | Premium Customer | `premium-customer-01` | `user_tier=Premium`, `beta_tester=false` | New player |
 | Standard Customer | `standard-customer-01` | `user_tier=Standard`, `beta_tester=false` | Legacy player |
 
-The selector updates the LaunchDarkly context so that targeting behavior can be demonstrated interactively.
+The persona selector is a demonstration aid. It is not authentication or authorization. Internal QA receives access through individual targeting, not through `beta_tester`.
 
-The Internal QA persona receives the new experience through individual targeting, not through the `beta_tester` attribute. The Premium Customer receives it through the `user_tier=Premium` rule.
+## Demonstration Runbook
 
-## Demonstration Scenarios
+### Scenario 1 — Internal QA validation
 
-### Scenario 1 — Release to Internal QA
+1. Confirm the flag is on in LaunchDarkly.
+2. Select **Internal QA** in the app.
+3. Confirm the new player appears.
+4. Explain that individual targeting allows a specific context to validate a release before broader exposure.
 
-1. Start the application and confirm that the flag is on in LaunchDarkly.
-2. Select **Internal QA**.
-3. Confirm that the new player experience appears.
-4. Explain how individual targeting allows a specific user to receive a feature before a wider release.
-
-### Scenario 2 — Target Premium Customers
+### Scenario 2 — Premium early access
 
 1. Keep the flag on.
 2. Select **Premium Customer**.
-3. Confirm that the new player experience appears.
-4. Explain how the `user_tier=Premium` rule selectively enables the experience.
-5. Select **Standard Customer** and confirm that the legacy player remains active under the default rule.
+3. Confirm the new player appears.
+4. Explain the `user_tier=Premium` rule.
+5. Select **Standard Customer** and confirm the legacy player remains.
 
-### Scenario 3 — Update Without Refreshing
+### Scenario 3 — Streaming update
 
-1. Leave the application open in the browser.
+1. Keep the browser open.
 2. Change the flag's on/off state in LaunchDarkly.
-3. Observe the player experience update.
-4. Confirm that the browser does not need to be refreshed.
+3. Observe the app update without a manual refresh.
+4. If it does not update, check SDK initialization, network access, browser console errors, and the selected environment.
 
-Streaming is enabled in the provider configuration.
+### Scenario 4 — Flag-off remediation
 
-### Scenario 4 — Roll Back a Problematic Release
-
-1. Turn the flag on and confirm that the new experience appears for the targeted personas.
+1. Turn the flag on and confirm the new player is visible for targeted personas.
 2. Turn the flag off in LaunchDarkly.
-3. Confirm that the legacy experience returns without refreshing the browser.
-4. For the operational rollback demonstration, use the PowerShell helper described below.
-
-This demonstrates that the feature can be disabled remotely without changing application code or redeploying the frontend.
+3. Confirm the legacy player returns without a refresh.
+4. Use the operational rollback helper only after its trigger is configured and you are ready to demonstrate it.
 
 ## Emergency Rollback
 
-The project includes:
+The repository includes:
 
 `scripts/emergency-rollback.ps1`
 
-The script invokes a LaunchDarkly Generic trigger intended to turn off `new-player-experience` in the configured environment. It prompts for the trigger URL at runtime and requires the confirmation text `ROLLBACK` before sending the request.
+The script is intended to invoke a LaunchDarkly Generic trigger configured to turn off `new-player-experience`. It prompts for the trigger URL at runtime and requires the exact confirmation `ROLLBACK` before sending the request.
 
-### Configure the Generic Trigger
+### Configure the Generic trigger
 
 In LaunchDarkly:
 
-1. Create or use a Generic trigger for the correct project and environment.
+1. Create or select a Generic trigger in the correct project and environment.
 2. Configure its action to turn off the intended feature flag.
-3. Verify the trigger configuration before the demonstration.
-4. Keep the trigger URL private.
+3. Review the trigger action and environment before testing.
+4. Keep the generated trigger URL private.
 
-The script can only perform the intended rollback if the trigger is correctly configured.
+The script cannot ensure the trigger's configuration is correct. Verify the configuration in LaunchDarkly before use.
 
-### Run the Script
+### Run the script
 
 From the project root in PowerShell:
 
@@ -304,31 +306,29 @@ From the project root in PowerShell:
 .\scripts\emergency-rollback.ps1
 ```
 
-When prompted:
+Follow the prompts:
 
-1. Enter the private LaunchDarkly trigger URL.
+1. Enter the private trigger URL.
 2. Type `ROLLBACK` to confirm.
 3. Review the HTTP response.
-4. Verify that the flag is off in LaunchDarkly.
-5. Confirm that the legacy player appears without refreshing the browser.
+4. Verify the flag is off in LaunchDarkly.
+5. Confirm the legacy player appears in the open browser without refreshing.
 
-A successful HTTP response alone does not prove that rollback completed. Verify both the flag state and the application behavior.
+A successful HTTP response alone is not sufficient proof of rollback. Confirm both the flag state and application behavior.
 
-### Trigger Security
+### Trigger security
 
 Treat the trigger URL as a secret bearer URL. Anyone who obtains it may be able to invoke its configured action.
 
-- Never commit the trigger URL to this repository.
-- Do not include it in this README, screenshots, public logs, or browser-side code.
+- Never commit the URL to Git.
+- Do not include it in this README, screenshots, public logs, or frontend code.
 - Store it in an approved private password manager or secret store.
-- Rotate the URL if it has been exposed.
+- Rotate it if exposed.
 - Restrict access to authorized operators.
 
-The rollback script prompts for the URL at runtime and should not store the URL in the source file.
+## Validation and Quality Gates
 
-## Validation and Quality Checks
-
-Run these commands from the project root.
+Run these checks from the project root.
 
 ### Lint
 
@@ -336,71 +336,71 @@ Run these commands from the project root.
 npm.cmd run lint
 ```
 
-This checks the JavaScript source for code-quality issues.
+This runs the lint script defined in `package.json`. Resolve reported errors before submitting.
 
-### Production Build
+### Production build
 
 ```powershell
 npm.cmd run build
 ```
 
-Vite generates production assets in `dist/`. This verifies that the app can be built; it does not deploy the application.
+Vite should generate production assets under `dist/`. This checks that the app can be built; it does not deploy it.
 
-### Preview the Production Build
+### Optional production preview
 
 ```powershell
 npm.cmd run preview
 ```
 
-Open the local URL printed by Vite to inspect the production build. The preview server is for local verification and is not a production hosting service.
+Open the URL printed by Vite. This is a local preview of the generated build, not a hosted production deployment.
 
-### Fresh-Clone Verification Checklist
-
-Use this checklist before submitting or demonstrating the repository:
+### Fresh-clone verification checklist
 
 - [ ] Cloned the repository or extracted the ZIP.
-- [ ] Opened the folder containing `package.json`.
+- [ ] Entered the directory containing `package.json`.
 - [ ] Installed dependencies successfully.
 - [ ] Created `.env.local` from `.env.example`.
 - [ ] Set the correct LaunchDarkly client-side ID.
-- [ ] Confirmed the flag key is `new-player-experience`.
-- [ ] Confirmed the individual QA target and Premium rule.
-- [ ] Started the application and opened the Vite URL.
-- [ ] Verified the Internal QA persona.
-- [ ] Verified the Premium Customer persona.
-- [ ] Verified the Standard Customer persona.
-- [ ] Verified that flag changes update the UI without refreshing.
-- [ ] Ran lint and the production build.
-- [ ] Confirmed that local secrets are not staged for Git.
-- [ ] Tested the rollback helper only with the intended private trigger URL and verified the final flag state.
+- [ ] Confirmed the flag key and Boolean variations.
+- [ ] Configured individual QA targeting and the Premium rule.
+- [ ] Started the app and opened the Vite URL.
+- [ ] Verified Internal QA receives the new player.
+- [ ] Verified Premium Customer receives the new player.
+- [ ] Verified Standard Customer receives the legacy player.
+- [ ] Verified flag updates while the browser remains open.
+- [ ] Verified turning the flag off returns the legacy player.
+- [ ] Ran lint and production build.
+- [ ] Checked that local secrets are not staged for Git.
+- [ ] Tested the rollback helper only with the intended private trigger and verified the final flag state.
 
 ## Troubleshooting
 
-### The application does not connect to LaunchDarkly
+### The app does not connect to LaunchDarkly
 
-- Confirm that `.env.local` exists in the project root.
-- Confirm that the variable name is `VITE_LD_CLIENT_SIDE_ID`.
-- Check that the client-side ID is correct and belongs to the intended environment.
+- Confirm `.env.local` exists in the project root.
+- Confirm the variable is named `VITE_LD_CLIENT_SIDE_ID`.
+- Confirm the ID belongs to the intended LaunchDarkly environment.
 - Do not use a server-side SDK key.
-- Restart the Vite development server after changing environment variables.
-- Check the browser console for SDK initialization or network errors.
+- Restart Vite after changing environment variables.
+- Inspect the browser console and network activity for SDK initialization errors.
 
-### The flag is disabled for every persona
+### All personas show the legacy player
 
-- Confirm the flag key is exactly `new-player-experience`.
-- Confirm the flag is on in the LaunchDarkly environment.
-- Confirm that the individual target uses the exact context key `internal-qa-01`.
-- Confirm that the Premium rule checks `user_tier` against the exact value `Premium`.
-- Confirm that the application's current context key and attributes match the persona.
-- Confirm that the default rule serves `false`.
+- Confirm the flag key is `new-player-experience`.
+- Confirm the flag is on.
+- Confirm the individual target uses the exact context key `internal-qa-01`.
+- Confirm the Premium rule checks `user_tier` against `Premium`.
+- Confirm the app is using the context and attributes expected for the selected persona.
+- Confirm the flag is configured in the same environment as the client-side ID.
 
-### Changes do not appear without a refresh
+### The UI does not update when the flag changes
 
-- Confirm that streaming is enabled in the SDK provider configuration.
-- Check the browser console for SDK or network errors.
-- Verify that you changed the flag in the same LaunchDarkly environment used by the application.
+- Confirm streaming is enabled in the provider configuration.
+- Check browser console and network errors.
+- Confirm the dashboard and app use the same LaunchDarkly environment.
+- Verify the flag change was saved successfully.
 
-### PowerShell cannot run `npm`
+### `npm` does not run in PowerShell
 
 Use `npm.cmd`, for example:
 
@@ -409,51 +409,44 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-### `npm.cmd ci` fails
+### `npm.cmd ci` reports that `package.json` cannot be found
 
-- Confirm that you are in the project root.
-- Confirm that `package.json` and `package-lock.json` are present.
-- If there is no lockfile, use `npm.cmd install`.
-- Review the terminal output for the specific dependency or network error.
+You are probably not in the project root. Run `Get-ChildItem` and change directory to the folder containing `package.json`.
 
 ### The rollback script fails
 
-- Confirm that the trigger URL is correct, private, and still active.
-- Confirm that the trigger belongs to the correct project and environment.
-- Type the required confirmation exactly as prompted.
-- Review the HTTP response and trigger configuration.
-- Verify the final flag state in LaunchDarkly.
-- Never put the trigger URL in source control or public logs.
+- Confirm the trigger URL is correct, private, and active.
+- Confirm it belongs to the correct project and environment.
+- Type the required confirmation exactly.
+- Review the response and trigger configuration.
+- Verify the flag state in LaunchDarkly.
+- Never paste the trigger URL into source control or public logs.
 
 ## Security and Repository Hygiene
 
-Before publishing changes:
+Before publishing a change:
 
 - Keep `.env.local` out of version control.
 - Keep `.env.example` limited to placeholder values.
-- Never commit server-side SDK keys, access tokens, or private rollback trigger URLs.
+- Never commit server-side SDK keys, access tokens, or private trigger URLs.
 - Keep `node_modules/` and `dist/` out of version control.
 - Do not put real customer data into demo contexts.
-- Review staged changes before committing.
+- Review the staged diff before committing.
 
-Check the working tree:
+Useful Git review commands:
 
 ```powershell
 git status --short
-```
-
-Review the exact changes staged for commit:
-
-```powershell
+git diff --check
 git diff --cached --check
 git diff --cached
 ```
 
-If a private trigger URL or credential has been exposed, rotate it rather than relying only on deleting it from the latest version of the file.
+If a credential or trigger URL has been exposed, rotate it. Removing it from the latest version of a file does not invalidate an already exposed secret.
 
 ## Project Structure
 
-The repository's key files include:
+The main repository files are expected to include:
 
 ```text
 streamwave-launchdarkly-demo/
@@ -474,32 +467,28 @@ streamwave-launchdarkly-demo/
 └── vite.config.js
 ```
 
-The exact repository contents are authoritative if files change over time.
+The current repository is authoritative if its file structure changes.
 
-## Limitations
+## Known Limitations
 
-- StreamWave is a frontend demo, not a complete video-streaming service.
-- It does not implement video delivery, billing, customer authentication, or backend authorization.
-- The internal persona selector is for demonstration and is not an authentication mechanism.
-- Client-side feature flags must not be used as the sole authorization mechanism for sensitive backend operations.
-- Emergency rollback requires a correctly configured LaunchDarkly trigger and suitable permissions.
-- Targeting and live updates require a correctly configured LaunchDarkly environment.
-- Feature flags do not replace automated testing, monitoring, or a complete incident-response process.
+- This is a frontend demonstration, not a complete streaming service.
+- It does not implement video delivery, billing, authentication, or backend authorization.
+- The persona selector is not an identity-verification mechanism.
+- Client-side feature flags must not be used as the sole authorization control for sensitive backend operations.
+- Rollback depends on a correctly configured LaunchDarkly Generic trigger and suitable access.
+- Targeting and live updates depend on correct SDK and environment configuration.
+- Feature flags do not replace testing, monitoring, or incident response.
 
 ## Customer Demonstration Narrative
 
-**Scenario:** StreamWave wants to release a redesigned playback experience while controlling exposure and limiting release risk.
+**Scenario:** StreamWave wants to release a redesigned playback experience while controlling exposure and reducing release risk.
 
-1. **Release safely:** Enable `new-player-experience` for the individually targeted Internal QA user.
-2. **Expand selectively:** Demonstrate the Premium targeting rule using `user_tier=Premium`.
-3. **Preserve the existing experience:** Show that Standard customers receive the legacy player under the default rule.
-4. **Remediate quickly:** Turn the flag off in LaunchDarkly and show the legacy experience returning without a browser refresh.
-5. **Demonstrate operational response:** Invoke the emergency rollback helper and verify the flag state and application behavior.
+1. **Release safely:** Enable `new-player-experience` for the individually targeted Internal QA context.
+2. **Expand selectively:** Demonstrate the Premium rule using `user_tier=Premium`.
+3. **Preserve the existing experience:** Show that Standard Customer receives the legacy player by default.
+4. **Remediate quickly:** Turn the flag off and show the legacy player returning without a browser refresh.
+5. **Demonstrate operational response:** Invoke the rollback helper and verify the flag state and application behavior.
 
-**Customer value:** The team can control feature exposure and respond to a problematic release without rebuilding or redeploying the frontend application.
+**Customer value:** The team can control feature exposure and respond to a problematic release without rebuilding or redeploying the frontend.
 
-**Important distinction:** Feature flags control application behavior. They do not replace monitoring, testing, authorization, or a complete incident-response process.
-
-## Learning Outcomes
-
-This project demonstrates how feature management can support safer releases, targeted exposure, rapid rollback, and validation of a new user experience without a new application deployment.
+**Important distinction:** Feature flags control application behavior. They do not replace testing, monitoring, authorization, or a complete incident-response process.
